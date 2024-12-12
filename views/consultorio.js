@@ -1,39 +1,43 @@
 import { DateTime } from "luxon";
-import { data_formatada, exibir, tempo_formatado } from "../utils/view.js";
+import {
+    data_formatada,
+    exibir,
+    horario_formatado,
+    tempo_formatado,
+} from "../utils/view.js";
 
 class ConsultorioView {
     constructor() {}
 
-    listar_pacientes(order = "nome", pacientes, consultas_agendadas) {
+    listar_pacientes(pacientes) {
         exibir("Pacientes:");
-        const pacientes_ordenados = Object.values(pacientes).sort((a, b) => {
-            const a_formatted =
-                order === cpf ? parseInt(a.cpf) : a[order].toLowerCase();
-            const b_formatted =
-                order === cpf ? parseInt(b.cpf) : b[order].toLowerCase();
-            return a_formatted.localeCompare(b_formatted);
-        });
         exibir("-----------------------------------------------------------");
         exibir("CPF         Nome                              Dt.Nasc.  Idade");
         exibir("-----------------------------------------------------------");
-        pacientes_ordenados.forEach((paciente) => {
-            const data = DateTime.fromString(paciente.data_nascimento, "yyyy-MM-dd");
+        pacientes.forEach((paciente) => {
+            const data = DateTime.fromString(
+                paciente.data_nascimento,
+                "yyyy-MM-dd"
+            );
             const data_nascimento = data.toFormat("dd/MM/yyyy");
-            const idade = Math.round(DateTime.now().diff(data, "years").toObject().years)
+            const idade = Math.round(
+                DateTime.now().diff(data, "years").toObject().years
+            );
             exibir(
                 `${paciente.cpf} ${paciente.nome.padEnd(33, " ")} ${data_nascimento} ${idade}`
             );
+            const consultas = paciente.consulta?.map((consulta) => consulta.toJSON());
 
-            const consultas_paciente = consultas_agendadas?.[paciente.cpf];
-            if (!consultas_paciente || consultas_paciente.length === 0) return;
-            const ultima_consulta =
-                consultas_paciente[consultas_paciente.length - 1];
-            if (ultima_consulta.is_future) {
+            if (!consultas || consultas.length === 0) return;
+            const ultima_consulta = consultas[consultas.length - 1];
+            const data_inicial = DateTime.fromJSDate(ultima_consulta.data_inicial);
+            const data_final = DateTime.fromJSDate(ultima_consulta.data_final);
+            if (data_inicial > DateTime.now().toLocal()) {
                 exibir(
-                    `            Agendado para ${ultima_consulta.data_formatada}`
+                    `            Agendado para ${data_inicial.toFormat("dd/MM/yyyy")} `
                 );
                 exibir(
-                    `            ${ultima_consulta.horario_inicial_formatado} às ${ultima_consulta.horario_final_formatado}`
+                    `            ${data_inicial.toFormat("HH:mm")} às ${data_final.toFormat("HH:mm")}`
                 );
             }
         });
@@ -41,36 +45,40 @@ class ConsultorioView {
     }
 
     async listar_agenda(consultas) {
-        const consultas_ordenadas = consultas.sort((a, b) => {
-            const a_formatted = a.data_com_duracao;
-            const b_formatted = b.data_com_duracao;
-            return a_formatted.localeCompare(b_formatted);
-        });
         exibir("Consultas:");
         exibir(
             "------------------------------------------------------------------------"
         );
         exibir(
-            "Data      H.Ini H.Fim Tempo Nome                       Dt.Nasc. "
+            "Data        H.Ini H.Fim Tempo Nome                       Dt.Nasc. "
         );
-        consultas_ordenadas.forEach(
-            ({ initial_date, final_date, paciente }, index) => {
-                const data_f = data_formatada(initial_date);
+        consultas.forEach(
+            ({ data_inicial, data_final, paciente }, index) => {
+                const data_f = data_formatada(data_inicial);
                 const horario_inicial_formatado =
-                    horario_formatado(initial_date);
-                const horario_final_formatado = horario_formatado(final_date);
+                    horario_formatado(data_inicial);
+                const horario_final_formatado = horario_formatado(data_final);
 
-                const duracao = DateTime.fromJSDate(final_date)
-                    .diff(initial_date, ["hours", "minutes"])
+                const duracao = DateTime.fromJSDate(data_final)
+                    .diff(DateTime.fromJSDate(data_inicial), [
+                        "hours",
+                        "minutes",
+                    ])
                     .toObject();
+
                 const data =
                     index !== 0 &&
                     data_f === data_formatada(consultas[index - 1].date)
                         ? "".padStart(10, " ")
-                        : data_formatada;
+                        : data_f;
+
+                const data_nascimento = DateTime.fromString(
+                    paciente.data_nascimento,
+                    "yyyy-MM-dd"
+                ).toFormat("dd/MM/yyyy");
 
                 exibir(
-                    `${data} ${horario_inicial_formatado} ${horario_final_formatado}  ${tempo_formatado(duracao)} ${paciente.nome.padEnd(24, " ")} ${data_formatada(paciente.data_nascimento)}`
+                    `${data} ${horario_inicial_formatado} ${horario_final_formatado}  ${tempo_formatado(duracao)} ${paciente.nome.padEnd(24, " ")} ${data_nascimento}`
                 );
             }
         );

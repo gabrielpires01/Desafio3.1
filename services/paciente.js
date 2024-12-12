@@ -1,4 +1,4 @@
-import Paciente from "../models/paciente.js";
+import { Consulta, Paciente } from "../models/index.js";
 import {
     inserir_cpf,
     inserir_data_nascimento,
@@ -22,9 +22,12 @@ class PacienteService {
         }
     }
 
-    async get_pacientes() {
+    async get_pacientes(order = "nome") {
         try {
-            const pacientes = await Paciente.findAll();
+            const pacientes = await Paciente.findAll({
+                include: [{ model: Consulta }],
+                order: [[order, "ASC"]],
+            });
             return pacientes;
         } catch (error) {
             alertar("Erro ao buscar pacientes");

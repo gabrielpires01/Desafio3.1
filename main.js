@@ -1,5 +1,5 @@
 import ConsultorioController from "./controllers/consultorio.js";
-import db from "./models/index.js";
+import { db } from "./models/index.js";
 import { pegar_dados } from "./utils/input.js";
 import { alertar, exibir, limpar_tela } from "./utils/view.js";
 

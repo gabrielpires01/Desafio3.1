@@ -53,6 +53,7 @@ class ConsultorioController {
 
         const paciente = await this.service_paciente.get_paciente(cpf);
         if (!paciente) {
+            alertar("Paciente não cadastrado");
             return;
         }
 
@@ -60,10 +61,13 @@ class ConsultorioController {
 
         const consulta = await this.service_consulta.get_consulta_futura(paciente.id, formatada);
         if (!consulta) {
+            alertar("Paciente não possui consulta agendada nesta data");
             return;
         }
         
-        service_consulta.delete(consulta.id);
+        const result = this.service_consulta.cancelar(consulta.id);
+        if (!result) return;
+
         exibir("Agendamento cancelado com sucesso!\n");
     }
 
@@ -83,15 +87,15 @@ class ConsultorioController {
     }
 
     async listar_pacientes(order = "nome") {
-        const pacientes = await this.service_paciente.get_pacientes();
-        const consultas_agendadas = await this.service_consulta.get_consultas();
-        this.view_consultorio.listar_pacientes(order, pacientes, consultas_agendadas);
+        const pacientes = await this.service_paciente.get_pacientes(order);
+        this.view_consultorio.listar_pacientes(pacientes);
     }
 
     async listar_agenda() {
         let data_inicial = inserir_data("Data inicial: ", true);
         let data_final = inserir_data("Data final: ", true, data_inicial);
-        const consultas = await this.service_consulta.get_consultas(data_inicial, data_final, true);
+        const resultado = await this.service_consulta.get_consultas(data_inicial, data_final, true);
+        const consultas = resultado.map(consulta => consulta.toJSON());
 
         this.view_consultorio.listar_agenda(consultas);
     }

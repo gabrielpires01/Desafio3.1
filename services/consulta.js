@@ -1,8 +1,7 @@
 import { Sequelize } from "sequelize";
-import Consulta from "../models/consulta.js";
 import { inserir_data, inserir_horario } from "../utils/appointment_input.js";
 import { DateTime } from "luxon";
-import Paciente from "../models/paciente.js";
+import { Paciente, Consulta } from "../models/index.js";
 
 class ConsultaService {
     constructor() {}
@@ -37,6 +36,7 @@ class ConsultaService {
     ) {
         const query = {
             where: {},
+            order: [["data_inicial", "DESC"]],
         };
 
         if (data_inicial && data_final) {
@@ -58,13 +58,11 @@ class ConsultaService {
         return await Consulta.findAll({ where: { paciente_id: user_id } });
     }
 
-    async get_consulta_futura(user_id, data = DateTime.now()) {
+    async get_consulta_futura(user_id, data = DateTime.now().toLocal()) {
         const consulta = await Consulta.findOne({
             where: {
                 paciente_id: user_id,
-                data_inicial: {
-                    [Sequelize.Op.gt]: data.toFormat("yyyy-MM-dd HH:mm"),
-                },
+                data_inicial: data.toJSDate(),
             },
         });
         return consulta?.toJSON();
@@ -72,14 +70,10 @@ class ConsultaService {
 
     async cancelar(consulta_id) {
         try {
-            await Consulta.destroy({ where: { id: consulta_id } });
+            return await Consulta.destroy({ where: { id: consulta_id } });
         } catch (error) {
             alertar("Erro ao cancelar consulta");
         }
-    }
-
-    hora_formatada(horario) {
-        return horario.toFormat("HH:mm");
     }
 
     data_com_duracao(data, horario_inicial) {
@@ -89,6 +83,11 @@ class ConsultaService {
         });
     }
 
+    hora_formatada(horario) {
+        return horario.toFormat("HH:mm");
+    }
+
+
     duracao(horario_inicial, horario_final) {
         return horario_final
             .diff(horario_inicial, ["hours", "minutes"])
@@ -97,11 +96,6 @@ class ConsultaService {
 
     tempo_formatado(duracao) {
         return `${duracao.hours}:${duracao.minutes}`;
-    }
-
-    is_future(data, horario_inicial) {
-        const data_com_duracao = this.data_com_duracao(data, horario_inicial);
-        return data_com_duracao > DateTime.now();
     }
 }
 
